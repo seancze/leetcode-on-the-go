@@ -153,6 +153,8 @@ async function handleGenerate() {
   status.textContent = "";
   status.className = "letc-status";
 
+  const startTime = performance.now();
+
   try {
     // Get Current Code
     const currentCode = await getCurrentCode();
@@ -171,6 +173,9 @@ async function handleGenerate() {
       throw new Error(response.error);
     }
 
+    const endTime = performance.now();
+    const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+
     // Update Chat History
     chatHistory.push({ role: "user", content: userPrompt });
     chatHistory.push({ role: "assistant", content: response.code });
@@ -181,11 +186,11 @@ async function handleGenerate() {
     // 5. Inject Code
     try {
       await setCurrentCode(response.code);
-      status.textContent = "Code generated and inserted!";
+      status.textContent = `Code generated in ${timeTaken}s and inserted!`;
       status.style.color = "green";
     } catch (insertError) {
       console.warn("Auto-insertion failed:", insertError);
-      status.innerHTML = "Code generated but failed to insert. ";
+      status.innerHTML = `Code generated in ${timeTaken}s but failed to insert.`;
       status.style.color = "orange";
       status.className = "letc-status"; // Reset error class if any
 

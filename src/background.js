@@ -23,7 +23,8 @@ async function handleGenerateCode(request, sendResponse) {
       apiKey,
       userPrompt,
       currentCode,
-      chatHistory
+      chatHistory,
+      "gpt-5.1-codex-mini"
     );
     sendResponse({ code: result.code });
   } catch (error) {

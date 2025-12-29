@@ -3,7 +3,7 @@ export async function generateCode(
   userPrompt,
   currentCode,
   chatHistory,
-  model = "gpt-5-nano"
+  model
 ) {
   const systemPrompt = `You are a strict code transcriber. Your task is to transform the user input into Python 3 code without adding any logic, assumptions, or problem solving beyond what the user explicitly states.
 
@@ -43,25 +43,67 @@ Violation of any rule above is an error.`;
   // Add the new user prompt
   messages.push({ role: "user", content: userPrompt });
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: messages,
-    }),
-  });
+  let response;
+  let data;
+  let generatedCode = "";
 
-  const data = await response.json();
+  // codex openAI models use the responses endpoint
+  if (model.includes("codex")) {
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model,
+        input: messages,
+      }),
+    });
 
-  if (data.error) {
-    throw new Error(data.error.message);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "OpenAI API request failed");
+    }
+
+    data = await response.json();
+
+    if (data.output) {
+      for (const item of data.output) {
+        if (item.type === "message" && item.role === "assistant") {
+          for (const contentItem of item.content) {
+            if (contentItem.type === "output_text") {
+              generatedCode += contentItem.text;
+            }
+          }
+        }
+      }
+    }
+
+    if (!generatedCode) {
+      throw new Error("No generated code found in response");
+    }
+  } else {
+    response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+      }),
+    });
+
+    data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    generatedCode = data.choices[0].message.content;
   }
-
-  const generatedCode = data.choices[0].message.content;
 
   // Clean up the code (remove markdown code blocks if present)
   const cleanCode = generatedCode

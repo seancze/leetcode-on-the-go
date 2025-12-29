@@ -26,7 +26,7 @@ class LeetCodeProvider {
         userPrompt,
         currentCode,
         chatHistory,
-        this.config.model || "gpt-4o"
+        this.config.model
       );
 
       return {

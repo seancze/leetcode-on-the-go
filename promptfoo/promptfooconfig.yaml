@@ -3,8 +3,13 @@ prompts:
 
 providers:
   - id: file://provider.js
+    label: "gpt-5-nano"
     config:
       model: gpt-5-nano
+  - id: file://provider.js
+    label: "gpt-5.1-codex-mini"
+    config:
+      model: gpt-5.1-codex-mini
 
 tests:
   - description: "1a - Longest Palindrome Implementation"

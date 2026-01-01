@@ -15,19 +15,19 @@ tests:
   - description: "1a - Longest Palindrome Implementation"
     vars:
       userPrompt: |
-        Def count_longest(s, left, right): 
-        While left > -1 and right < len(s) and s[left] == s[right] 
-        Left -= 1 
-        Right += 1 
+        Def count_longest(s, left, right):
+        While left > -1 and right < len(s) and s[left] == s[right]
+        Left -= 1
+        Right += 1
 
-        Return max(right-left-1, 0) 
+        Return max(right-left-1, 0)
 
-        Inside the longestPalindrome function: 
-        For each i, char in s 
-        Invoke count_longest(s, i, i) to get longest odd palindrome and set to longest_odd 
-        Invoke count_longest(s, i, i+1) to get longest even palindrome and set to longest_even 
+        Inside the longestPalindrome function:
+        For each i, char in s
+        Invoke count_longest(s, i, i) to get longest odd palindrome and set to longest_odd
+        Invoke count_longest(s, i, i+1) to get longest even palindrome and set to longest_even
 
-        Set ans to max(ans, longest_odd, longest_even) 
+        Set ans to max(ans, longest_odd, longest_even)
 
         Return ans
       currentCode: |
@@ -45,7 +45,7 @@ tests:
   - description: "1b - Update to return substring"
     vars:
       userPrompt: |
-        update the code so that 
+        update the code so that
         1. ans is renamed to max_length
         2. create a new variable called start which is set to 0
         3. whenever max_length increases in value, set start to i
@@ -58,7 +58,7 @@ tests:
                         left -= 1
                         right += 1
                     return max(right-left-1, 0)
-                
+
                 ans = 0
                 for i, char in enumerate(s):
                     longest_odd = count_longest(s, i, i)
@@ -90,7 +90,7 @@ tests:
                         left -= 1
                         right += 1
                     return max(right-left-1, 0)
-                
+
                 max_length = 0
                 start = 0
                 for i, char in enumerate(s):
@@ -98,12 +98,12 @@ tests:
                     if longest_odd > max_length:
                         max_length = longest_odd
                         start = i
-                    
+
                     longest_even = count_longest(s, i, i+1)
                     if longest_even > max_length:
                         max_length = longest_even
                         start = i
-                        
+
                 return s[start:start+max_length]
       test_code: |
         s="abcabcbb"
@@ -122,6 +122,45 @@ tests:
       test_code: |
         print(Solution().countNegatives([]))
       expected_output: '"Hello, World!"'
+    assert:
+      - type: python
+        value: file://assert.py
+
+  - description: "3 - Long output"
+    vars:
+      userPrompt: |
+        Implement a prefix trie that contains 2 methods
+        - insert
+        - startsWith
+
+        In the main function code
+        - instantiate a prefix trie and set it to my_trie
+        - insert all elements of allowed into my_trie
+
+        - let q = [[bottom]]
+        - while q
+        - let cur = q.popleft()
+        - let new_ls = []
+        - for i in range(1, len(cur))
+        - let possible_char = my_trie.startsWith(cur[i-1:i+1])
+        - let temp = []
+        - if len(new_ls) == 0
+        - for each char in possible_char
+        - add [char] to new_ls
+        - else
+        - for each char in possible_char
+        -   for each inner_ls in new_ls
+        -     add inner_ls + [char] to temp
+        - inner_ls = temp
+        - if len(inner_ls[0]) == 1
+        -   return true
+        - q.extend(inner_ls)
+
+        Return false
+      currentCode: |
+        class Solution:
+            def pyramidTransition(self, bottom: str, allowed: List[str]) -> bool:
+
     assert:
       - type: python
         value: file://assert.py

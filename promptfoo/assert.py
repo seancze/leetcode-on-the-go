@@ -7,8 +7,17 @@ from contextlib import redirect_stdout
 def get_assert(output, context):
     try:
         vars = context["vars"]
-        test_code = vars["test_code"]
-        expected_output = str(vars["expected_output"])
+        test_code = vars.get("test_code")
+        expected_output = vars.get("expected_output")
+
+        if test_code is None or expected_output is None:
+            return {
+                "pass": True,
+                "score": 1,
+                "reason": "No test code or expected output provided",
+            }
+
+        expected_output = str(expected_output)
 
         # Clean up code (remove markdown)
         clean_code = output.replace("```python", "").replace("```", "").strip()

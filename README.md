@@ -16,7 +16,7 @@ This Chrome extension allows you to solve LeetCode problems by writing solutions
 2.  Open Chrome and navigate to `chrome://extensions/`.
 3.  Enable **Developer mode** in the top right corner.
 4.  Click **Load unpacked**.
-5.  Select the folder containing this project (`leetcode-chrome-plugin`).
+5.  Select the `src/` folder
 
 ## Setup
 

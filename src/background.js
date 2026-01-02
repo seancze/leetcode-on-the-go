@@ -1,65 +1,72 @@
 import { generateCode, generateTest } from "./llm.js";
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "generateCode") {
-    handleGenerateCode(request, sendResponse);
-    return true; // Will respond asynchronously
-  }
-  if (request.action === "generateTest") {
-    handleGenerateTest(request, sendResponse);
-    return true; // Will respond asynchronously
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "generateCode") {
+    port.onMessage.addListener((request) => {
+      handleGenerateCodeStream(port, request);
+    });
+  } else if (port.name === "generateTest") {
+    port.onMessage.addListener((request) => {
+      handleGenerateTestStream(port, request);
+    });
   }
 });
 
-async function handleGenerateCode(request, sendResponse) {
+async function handleGenerateCodeStream(port, request) {
   try {
     const { apiKey } = await getApiKey();
     if (!apiKey) {
-      sendResponse({
+      port.postMessage({
         error: "API Key not found. Please set it in the extension options.",
       });
       return;
     }
 
-    const { currentCode, chatHistory, userPrompt } = request.data;
+    const { currentCode, chatHistory, userPrompt } = request;
 
     const result = await generateCode(
       apiKey,
       userPrompt,
       currentCode,
       chatHistory,
-      "gpt-5.1-codex-mini"
+      "gpt-5.1-codex-mini",
+      (chunk) => {
+        port.postMessage({ type: "chunk", data: chunk });
+      }
     );
-    sendResponse({ code: result.code });
+    port.postMessage({ type: "complete", code: result.code });
   } catch (error) {
     console.error("Error generating code:", error);
-    sendResponse({ error: error.message });
+    port.postMessage({ error: error.message });
   }
 }
 
-async function handleGenerateTest(request, sendResponse) {
+async function handleGenerateTestStream(port, request) {
   try {
     const { apiKey } = await getApiKey();
     if (!apiKey) {
-      sendResponse({
+      port.postMessage({
         error: "API Key not found. Please set it in the extension options.",
       });
       return;
     }
 
-    const { currentCode, problemDetails, currentTestCases } = request.data;
+    const { currentCode, problemDetails, currentTestCases } = request;
 
     const result = await generateTest(
       apiKey,
       currentCode,
       problemDetails,
       currentTestCases,
-      "gpt-5.1-codex-mini"
+      "gpt-5.1-codex-mini",
+      (chunk) => {
+        port.postMessage({ type: "chunk", data: chunk });
+      }
     );
-    sendResponse(result);
+    port.postMessage({ type: "complete", result: result });
   } catch (error) {
     console.error("Error generating test:", error);
-    sendResponse({ error: error.message });
+    port.postMessage({ error: error.message });
   }
 }
 

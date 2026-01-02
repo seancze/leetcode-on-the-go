@@ -1,4 +1,5 @@
-import OpenAI from "openai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText } from "ai";
 
 export const config = {
   runtime: "edge",
@@ -47,7 +48,7 @@ export default async function handler(req) {
       });
     }
 
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAI({ apiKey });
 
     const systemPrompt = `You are a strict code transcriber. Your task is to transform the user input into Python 3 code without adding any logic, assumptions, or problem solving beyond what the user explicitly states.
 
@@ -84,26 +85,21 @@ Violation of any rule above is an error.`;
 
     messages.push({ role: "user", content: userPrompt });
 
-    const response = await openai.responses.create({
-      model: model,
-      input: messages,
+    const result = streamText({
+      model: openai(model),
+      messages: messages,
+      providerOptions: {
+        openai: {
+          reasoningSummary: "auto",
+        },
+      },
     });
 
-    const generatedOutput =
-      response.output_text || response.output[0].content[0].text;
-    const usage = response.usage;
-
-    // remove markdown code blocks if present
-    const cleanCode = generatedOutput
-      .replace(/^```python\n/, "")
-      .replace(/^```\n/, "")
-      .replace(/\n```$/, "");
-
-    return new Response(JSON.stringify({ code: cleanCode, usage }), {
-      status: 200,
+    return result.toUIMessageStreamResponse({
       headers: {
-        "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   } catch (error) {

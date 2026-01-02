@@ -1,4 +1,5 @@
-import OpenAI from "openai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText } from "ai";
 
 export const config = {
   runtime: "edge",
@@ -47,7 +48,7 @@ export default async function handler(req) {
       });
     }
 
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAI({ apiKey });
 
     const systemPrompt = `You are an expert software tester. Your task is to evaluate the user's code and generate a new test case if necessary.
 
@@ -73,30 +74,23 @@ Return the result as a JSON object with the following structure:
       },
     ];
 
-    const response = await openai.responses.create({
-      model: model,
-      input: messages,
+    const result = streamText({
+      model: openai(model),
+      messages: messages,
+      providerOptions: {
+        openai: {
+          reasoningSummary: "auto",
+        },
+      },
     });
 
-    const generatedOutput =
-      response.output_text || response.output[0].content[0].text;
-    const usage = response.usage;
-    const result = JSON.parse(generatedOutput);
-
-    return new Response(
-      JSON.stringify({
-        testCase: result.testCase,
-        isUserCorrect: result.isUserCorrect,
-        usage,
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
-    );
+    return result.toUIMessageStreamResponse({
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,

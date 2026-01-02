@@ -163,62 +163,157 @@ async function handleGenerate() {
     // Get Current Code
     const currentCode = await getCurrentCode();
 
-    // Send to Background
-    const response = await chrome.runtime.sendMessage({
-      action: "generateCode",
-      data: {
-        currentCode: currentCode,
-        chatHistory: chatHistory,
-        userPrompt: userPrompt,
-      },
-    });
-
-    if (response.error) {
-      throw new Error(response.error);
-    }
-
-    const endTime = performance.now();
-    const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
-
-    // Update Chat History
+    // Update Chat History with User Prompt
     chatHistory.push({ role: "user", content: userPrompt });
-    chatHistory.push({ role: "assistant", content: response.code });
 
-    saveHistory();
+    // Add placeholder for Assistant Response
+    const assistantMsg = { role: "assistant", content: "", reasoning: "" };
+    chatHistory.push(assistantMsg);
     renderHistory();
 
-    // 5. Inject Code
-    try {
-      await setCurrentCode(response.code);
-      status.textContent = `Code generated in ${timeTaken}s and inserted!`;
-      status.style.color = "green";
-    } catch (insertError) {
-      console.warn("Auto-insertion failed:", insertError);
-      status.innerHTML = `Code generated in ${timeTaken}s but failed to insert.`;
-      status.style.color = "orange";
-      status.className = "letc-status"; // Reset error class if any
+    // Connect to Background Script
+    const port = chrome.runtime.connect({ name: "generateCode" });
 
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "letc-btn letc-btn-primary letc-btn-xs";
-      copyBtn.textContent = "Copy Code";
-      copyBtn.style.marginLeft = "10px";
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(response.code).then(() => {
-          copyBtn.textContent = "Copied!";
-          setTimeout(() => (copyBtn.textContent = "Copy Code"), 2000);
-        });
-      };
-      status.appendChild(copyBtn);
-    }
+    // Send Request
+    port.postMessage({
+      currentCode: currentCode,
+      chatHistory: chatHistory.slice(0, -2), // Exclude current user prompt and placeholder
+      userPrompt: userPrompt,
+    });
 
-    // 6. Clear Input
-    input.value = "";
+    let accumulatedCode = "";
+    let accumulatedReasoning = "";
+
+    port.onMessage.addListener(async (msg) => {
+      if (msg.error) {
+        status.textContent = msg.error;
+        status.className = "letc-status error";
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Code";
+        return;
+      }
+
+      if (msg.type === "chunk") {
+        const { type, content } = msg.data;
+        if (type === "text") {
+          accumulatedCode += content;
+          assistantMsg.content = accumulatedCode;
+        } else if (type === "reasoning") {
+          accumulatedReasoning += content;
+          assistantMsg.reasoning = accumulatedReasoning;
+        }
+        // Update UI efficiently
+        updateLastMessage(assistantMsg);
+      } else if (msg.type === "complete") {
+        const endTime = performance.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+
+        saveHistory();
+
+        // Inject Code
+        try {
+          await setCurrentCode(msg.code);
+          status.textContent = `Code generated in ${timeTaken}s and inserted!`;
+          status.style.color = "green";
+        } catch (insertError) {
+          console.warn("Auto-insertion failed:", insertError);
+          status.innerHTML = `Code generated in ${timeTaken}s but failed to insert.`;
+          status.style.color = "orange";
+          status.className = "letc-status";
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "letc-btn letc-btn-primary letc-btn-xs";
+          copyBtn.textContent = "Copy Code";
+          copyBtn.style.marginLeft = "10px";
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(msg.code).then(() => {
+              copyBtn.textContent = "Copied!";
+              setTimeout(() => (copyBtn.textContent = "Copy Code"), 2000);
+            });
+          };
+          status.appendChild(copyBtn);
+        }
+
+        // Clear Input
+        input.value = "";
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Code";
+      }
+    });
   } catch (error) {
     status.textContent = error.message;
     status.className = "letc-status error";
-  } finally {
     generateBtn.disabled = false;
     generateBtn.textContent = "Code";
+  }
+}
+
+function updateLastMessage(msg) {
+  const container = document.getElementById("letc-history");
+  if (!container) return;
+
+  const lastMsgDiv = container.lastElementChild;
+  if (lastMsgDiv && lastMsgDiv.classList.contains("assistant")) {
+    // Re-render the content of the last message
+    lastMsgDiv.innerHTML = "";
+
+    if (msg.reasoning) {
+      const reasoningDiv = document.createElement("div");
+      reasoningDiv.className = "letc-reasoning";
+      reasoningDiv.style.fontSize = "0.8em";
+      reasoningDiv.style.color = "#888";
+      reasoningDiv.style.marginBottom = "5px";
+      reasoningDiv.style.fontStyle = "italic";
+      reasoningDiv.textContent = "Thinking: " + msg.reasoning;
+      lastMsgDiv.appendChild(reasoningDiv);
+    }
+
+    const contentDiv = document.createElement("div");
+    if (msg.content.length > 200) {
+      contentDiv.textContent = "Code generated (click Apply to view/use).";
+      contentDiv.title = msg.content;
+    } else {
+      contentDiv.textContent = msg.content;
+    }
+    lastMsgDiv.appendChild(contentDiv);
+
+    // Add Apply Button (only if there is content)
+    if (msg.content) {
+      const applyBtn = document.createElement("button");
+      applyBtn.className = "letc-btn letc-btn-secondary letc-btn-xs";
+      applyBtn.textContent = "Apply Code";
+      applyBtn.style.marginTop = "5px";
+      applyBtn.onclick = async () => {
+        const status = document.getElementById("letc-status");
+        try {
+          status.textContent = "Applying code...";
+          await setCurrentCode(msg.content);
+          status.textContent = "Code applied from history!";
+          status.style.color = "green";
+        } catch (e) {
+          status.innerHTML = "Failed to apply code. ";
+          status.className = "letc-status error";
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "letc-btn letc-btn-primary letc-btn-xs";
+          copyBtn.textContent = "Copy Code";
+          copyBtn.style.marginLeft = "10px";
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(msg.content).then(() => {
+              copyBtn.textContent = "Copied!";
+              setTimeout(() => (copyBtn.textContent = "Copy Code"), 2000);
+            });
+          };
+          status.appendChild(copyBtn);
+        }
+      };
+      lastMsgDiv.appendChild(applyBtn);
+    }
+
+    container.scrollTop = container.scrollHeight;
+  } else {
+    // Fallback if structure mismatch
+    renderHistory();
   }
 }
 
@@ -249,56 +344,71 @@ async function handleGenerateTest() {
     // Get Current Test Cases
     const currentTestCases = await getTestCases();
 
-    // Send to Background
-    const response = await chrome.runtime.sendMessage({
-      action: "generateTest",
-      data: {
-        currentCode: currentCode,
-        problemDetails: problemDetails,
-        currentTestCases: currentTestCases,
-      },
+    const port = chrome.runtime.connect({ name: "generateTest" });
+    port.postMessage({
+      currentCode: currentCode,
+      problemDetails: problemDetails,
+      currentTestCases: currentTestCases,
     });
 
-    if (response.error) {
-      throw new Error(response.error);
-    }
+    port.onMessage.addListener(async (msg) => {
+      if (msg.error) {
+        status.textContent = msg.error;
+        status.className = "letc-status error";
+        generateTestBtn.disabled = false;
+        generateTestBtn.textContent = "Test";
+        return;
+      }
 
-    const endTime = performance.now();
-    const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+      if (msg.type === "chunk") {
+        // Optional: Show thinking for test generation in status
+        if (msg.data.type === "reasoning") {
+          status.textContent =
+            "Thinking: " + msg.data.content.substring(0, 50) + "...";
+        }
+      } else if (msg.type === "complete") {
+        const response = msg.result;
+        const endTime = performance.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
 
-    if (response.isUserCorrect) {
-      status.textContent = `Code appears correct! No new test case needed. (${timeTaken}s)`;
-      status.style.color = "green";
-      return;
-    }
+        if (response.isUserCorrect) {
+          status.textContent = `Code appears correct! No new test case needed. (${timeTaken}s)`;
+          status.style.color = "green";
+        } else {
+          // Append Test Case
+          try {
+            await appendTestCase(response.testCase);
+            status.textContent = `Test case generated in ${timeTaken}s and appended!`;
+            status.style.color = "green";
+          } catch (appendError) {
+            console.warn("Auto-append failed:", appendError);
+            status.innerHTML = `Test case generated in ${timeTaken}s but failed to append.`;
+            status.style.color = "orange";
+            status.className = "letc-status";
 
-    // Append Test Case
-    try {
-      await appendTestCase(response.testCase);
-      status.textContent = `Test case generated in ${timeTaken}s and appended!`;
-      status.style.color = "green";
-    } catch (appendError) {
-      console.warn("Auto-append failed:", appendError);
-      status.innerHTML = `Test case generated in ${timeTaken}s but failed to append.`;
-      status.style.color = "orange";
-      status.className = "letc-status";
-
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "letc-btn letc-btn-primary letc-btn-xs";
-      copyBtn.textContent = "Copy Test Case";
-      copyBtn.style.marginLeft = "10px";
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(response.testCase).then(() => {
-          copyBtn.textContent = "Copied!";
-          setTimeout(() => (copyBtn.textContent = "Copy Test Case"), 2000);
-        });
-      };
-      status.appendChild(copyBtn);
-    }
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "letc-btn letc-btn-primary letc-btn-xs";
+            copyBtn.textContent = "Copy Test Case";
+            copyBtn.style.marginLeft = "10px";
+            copyBtn.onclick = () => {
+              navigator.clipboard.writeText(response.testCase).then(() => {
+                copyBtn.textContent = "Copied!";
+                setTimeout(
+                  () => (copyBtn.textContent = "Copy Test Case"),
+                  2000
+                );
+              });
+            };
+            status.appendChild(copyBtn);
+          }
+        }
+        generateTestBtn.disabled = false;
+        generateTestBtn.textContent = "Test";
+      }
+    });
   } catch (error) {
     status.textContent = error.message;
     status.className = "letc-status error";
-  } finally {
     generateTestBtn.disabled = false;
     generateTestBtn.textContent = "Test";
   }
@@ -474,6 +584,17 @@ function renderHistory() {
     div.className = `letc-message ${msg.role}`;
 
     if (msg.role === "assistant") {
+      if (msg.reasoning) {
+        const reasoningDiv = document.createElement("div");
+        reasoningDiv.className = "letc-reasoning";
+        reasoningDiv.style.fontSize = "0.8em";
+        reasoningDiv.style.color = "#888";
+        reasoningDiv.style.marginBottom = "5px";
+        reasoningDiv.style.fontStyle = "italic";
+        reasoningDiv.textContent = "Thinking: " + msg.reasoning;
+        div.appendChild(reasoningDiv);
+      }
+
       const contentDiv = document.createElement("div");
       // Truncate code in display if it's too long
       if (msg.content.length > 200) {

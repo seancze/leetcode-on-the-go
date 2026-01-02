@@ -4,6 +4,8 @@
   "description": "Backend for LeetCode Chrome extension",
   "main": "index.js",
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.2",
+    "ai": "^6.0.5",
     "openai": "^6.15.0"
   }
 }

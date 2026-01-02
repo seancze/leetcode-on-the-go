@@ -79,7 +79,7 @@ Return the result as a JSON object with the following structure:
       messages: messages,
       providerOptions: {
         openai: {
-          reasoningSummary: "auto",
+          reasoningEffort: "low",
         },
       },
     });

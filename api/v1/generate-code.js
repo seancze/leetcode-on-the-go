@@ -90,7 +90,7 @@ Violation of any rule above is an error.`;
       messages: messages,
       providerOptions: {
         openai: {
-          reasoningSummary: "auto",
+          reasoningEffort: "low",
         },
       },
     });

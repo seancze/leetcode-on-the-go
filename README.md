@@ -1,6 +1,6 @@
-# LeetCode On The Go Chrome Extension
+# LeetCode On The Go
 
-This Chrome extension allows you to solve LeetCode problems by writing solutions in English. It uses OpenAI's GPT models to convert your natural language instructions into Python 3 code and inserts it directly into the LeetCode editor.
+Coding on mobile is hard because it is difficult to code with proper indentations and punctuations. This browser extension allows you to **LeetCode on mobile by writing solutions in English**.
 
 ## Features
 
@@ -12,15 +12,36 @@ This Chrome extension allows you to solve LeetCode problems by writing solutions
   ![test-generation-1](assets/readme/test-generation-1.png)
   ![test-generation-2](assets/readme/test-generation-2.png)
 
+## Installation
+
+### Mobile
+
+Google Chrome does **not** support extensions on mobile. To use this extension on Mobile, download Microsoft Edge:
+
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.microsoft.emmx)
+- [Apple App Store](https://apps.apple.com/us/app/microsoft-edge-ai-browser/id1288723196)
+
+Then, copy the link below into your mobile browser:
+https://microsoftedge.microsoft.com/addons/detail/leetcode-on-the-go/gekpombcbbhihahgepkfkcfkgiihmjhc
+
+Finally, click "Get" to install the extension:
+![microsoft-add-on-mobile](assets/readme/microsoft-add-on-mobile.jpeg)
+
+### Desktop
+
+If you would like to use this extension on desktop, you may continue to install the extension on the Chrome Web Store:
+https://chromewebstore.google.com/detail/leetcode-on-the-go/omolmbaihkobpnhnbjjcipipndhchpma
+
 ## Usage
 
-1.  Navigate to any LeetCode problem page (e.g., `https://leetcode.com/problems/two-sum/`).
-2.  A floating panel "English to Code" will appear in the bottom right.
-3.  Type your solution logic in the text area.
+1.  Navigate to any LeetCode problem page. For example: https://leetcode.com/problems/two-sum/
+2.  A floating panel will appear in the bottom right.
+3.  Select the "Python3" language for your code editor.
+4.  Type your solution logic in the text area.
     - Example: "Create a hash map to store the complement of each number. Iterate through the array, check if complement exists, if so return indices."
-4.  Click **Code**.
-5.  The extension will generate the Python code and replace the content in the LeetCode editor.
-6.  You can continue the conversation to fix bugs or optimise the solution.
+5.  Click **Code**.
+6.  The extension will generate the Python code and replace the content in the LeetCode editor.
+7.  You can continue the conversation to fix bugs or optimise the solution.
 
 ## For developers
 
@@ -32,15 +53,6 @@ This Chrome extension allows you to solve LeetCode problems by writing solutions
 4.  Enable **Developer mode** in the top right corner.
 5.  Click **Load unpacked**.
 6.  Select the `dist/src/` folder
-
-### File description
-
-- `src/manifest.json`: Extension configuration.
-- `src/background.ts`: Handles asynchronous requests.
-- `src/llm.ts`: Handles OpenAI API requests.
-- `src/content.ts`: Injects UI and interacts with the page.
-- `src/injected.ts`: Interacts with the Monaco editor.
-- `src/options.html`: Settings page.
 
 ## Running tests
 
